@@ -1,0 +1,42 @@
+{
+  "name": "onyx-clipper",
+  "version": "0.1.0",
+  "description": "Clip web pages to your Onyx vault",
+  "author": "Onyx",
+  "license": "MIT",
+  "scripts": {
+    "dev:chrome": "webpack --watch --env browser=chrome --mode=development",
+    "dev:firefox": "webpack --watch --env browser=firefox --mode=development",
+    "build:chrome": "webpack --env browser=chrome --mode=production",
+    "build:firefox": "webpack --env browser=firefox --mode=production",
+    "build": "npm run build:chrome && npm run build:firefox",
+    "clean": "rm -rf dist dist_firefox",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "dayjs": "^1.11.13",
+    "defuddle": "^0.6.6",
+    "dompurify": "^3.0.9",
+    "lz-string": "^1.5.0",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2",
+    "webextension-polyfill": "^0.12.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.270",
+    "@types/dompurify": "^3.0.5",
+    "@types/turndown": "^5.0.4",
+    "@types/webextension-polyfill": "^0.12.1",
+    "copy-webpack-plugin": "^12.0.2",
+    "css-loader": "^7.1.2",
+    "mini-css-extract-plugin": "^2.9.0",
+    "sass": "^1.77.8",
+    "sass-loader": "^14.2.1",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.9",
+    "webpack": "^5.97.1",
+    "webpack-cli": "^5.1.4"
+  }
+}
