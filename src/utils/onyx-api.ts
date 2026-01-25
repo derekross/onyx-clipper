@@ -1,4 +1,5 @@
-import type { ClipRequest, AiRequest, AiResponse } from '../types/types';
+import browser from 'webextension-polyfill';
+import type { ClipRequest, AiRequest, AiResponse, MessageResponse } from '../types/types';
 
 /**
  * Clip content to Onyx via URL scheme
@@ -21,7 +22,17 @@ export async function clipToOnyx(request: ClipRequest): Promise<void> {
   
   // Open Onyx via URL scheme
   const url = `onyx://clip?${params.toString()}`;
-  window.open(url, '_self');
+  
+  // Send message to background script to open the deep link
+  // This avoids the popup closing and canceling the permission dialog
+  const response = await browser.runtime.sendMessage({
+    action: 'openDeepLink',
+    data: { url },
+  }) as MessageResponse;
+  
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to open Onyx');
+  }
 }
 
 /**

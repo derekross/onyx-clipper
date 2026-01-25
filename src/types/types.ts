@@ -98,7 +98,8 @@ export type MessageAction =
   | 'setHighlighterMode'
   | 'ping'
   | 'clipToOnyx'
-  | 'requestAi';
+  | 'requestAi'
+  | 'openDeepLink';
 
 export interface Message {
   action: MessageAction;

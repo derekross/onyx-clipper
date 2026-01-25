@@ -52,6 +52,16 @@ async function handleMessage(message: Message, sender: browser.Runtime.MessageSe
         }
         return { success: false, error: 'No active tab' };
 
+      case 'openDeepLink':
+        // Open a deep link URL from the background script
+        // This avoids the popup closing and canceling the permission dialog
+        const deepLinkData = message.data as { url: string };
+        if (deepLinkData?.url) {
+          await openDeepLink(deepLinkData.url);
+          return { success: true };
+        }
+        return { success: false, error: 'No URL provided' };
+
       default:
         return { success: false, error: `Unknown action: ${message.action}` };
     }
@@ -62,6 +72,37 @@ async function handleMessage(message: Message, sender: browser.Runtime.MessageSe
       error: error instanceof Error ? error.message : 'Unknown error' 
     };
   }
+}
+
+/**
+ * Open a deep link URL
+ * Uses tabs.update to navigate the current tab temporarily, then navigates back
+ * This triggers the OS "Open external app" dialog without popup issues
+ */
+async function openDeepLink(url: string): Promise<void> {
+  // Get the active tab
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id || !tab.url) {
+    throw new Error('No active tab');
+  }
+  
+  // Store the original URL
+  const originalUrl = tab.url;
+  
+  // Navigate to the deep link - this will trigger the OS permission dialog
+  await browser.tabs.update(tab.id, { url });
+  
+  // Wait a moment for the dialog to appear, then navigate back
+  // The deep link will have been triggered by this point
+  setTimeout(async () => {
+    try {
+      // Navigate back to the original page
+      await browser.tabs.update(tab.id!, { url: originalUrl });
+    } catch (e) {
+      // Tab may have been closed or navigated elsewhere
+      console.log('Could not restore original URL:', e);
+    }
+  }, 500);
 }
 
 // Handle keyboard commands
