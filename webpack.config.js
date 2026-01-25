@@ -85,6 +85,14 @@ module.exports = (env, argv) => {
     devtool: argv.mode === 'development' ? 'inline-source-map' : false,
     optimization: {
       minimize: argv.mode === 'production',
+      // Use named chunk IDs to avoid conflicts with external scripts
+      chunkIds: 'named',
+      splitChunks: {
+        chunks: 'async',
+        name: (module, chunks, cacheGroupKey) => {
+          return `chunk-${cacheGroupKey}`;
+        },
+      },
     },
   };
 };
