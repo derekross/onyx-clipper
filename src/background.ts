@@ -57,7 +57,7 @@ async function handleMessage(message: Message, sender: browser.Runtime.MessageSe
         // This avoids the popup closing and canceling the permission dialog
         const deepLinkData = message.data as { url: string };
         if (deepLinkData?.url) {
-          await openDeepLink(deepLinkData.url);
+          openDeepLink(deepLinkData.url);
           return { success: true };
         }
         return { success: false, error: 'No URL provided' };
@@ -76,33 +76,23 @@ async function handleMessage(message: Message, sender: browser.Runtime.MessageSe
 
 /**
  * Open a deep link URL
- * Uses tabs.update to navigate the current tab temporarily, then navigates back
- * This triggers the OS "Open external app" dialog without popup issues
+ * Following Obsidian's approach - just open the URL directly
  */
-async function openDeepLink(url: string): Promise<void> {
-  // Get the active tab
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.id || !tab.url) {
-    throw new Error('No active tab');
-  }
-  
-  // Store the original URL
-  const originalUrl = tab.url;
-  
-  // Navigate to the deep link - this will trigger the OS permission dialog
-  await browser.tabs.update(tab.id, { url });
-  
-  // Wait a moment for the dialog to appear, then navigate back
-  // The deep link will have been triggered by this point
-  setTimeout(async () => {
-    try {
-      // Navigate back to the original page
-      await browser.tabs.update(tab.id!, { url: originalUrl });
-    } catch (e) {
-      // Tab may have been closed or navigated elsewhere
-      console.log('Could not restore original URL:', e);
+function openDeepLink(url: string): void {
+  // Simply create a new tab with the deep link URL
+  // The OS will intercept this and open the registered app
+  browser.tabs.create({ url, active: false }).then(tab => {
+    // Close the tab after a short delay (the deep link will have been triggered)
+    if (tab.id) {
+      setTimeout(() => {
+        browser.tabs.remove(tab.id!).catch(() => {
+          // Tab may already be closed
+        });
+      }, 100);
     }
-  }, 500);
+  }).catch(error => {
+    console.error('Failed to open deep link:', error);
+  });
 }
 
 // Handle keyboard commands
