@@ -111,10 +111,18 @@ async function loadPageContent() {
     pageUrl.textContent = new URL(pageContent.metadata.url).hostname;
     pageUrl.title = pageContent.metadata.url;
     
-    // Find matching template based on URL
-    const matchingTemplate = findMatchingTemplate(pageContent.metadata.url, templates);
-    if (matchingTemplate) {
-      templateSelect.value = matchingTemplate.id;
+    // Find matching template based on URL or selection
+    // If there's a selection, prefer the "Selection Only" template
+    if (pageContent.selection && pageContent.selection.trim().length > 0) {
+      const selectionTemplate = templates.find((t) => t.id === 'selection');
+      if (selectionTemplate) {
+        templateSelect.value = selectionTemplate.id;
+      }
+    } else {
+      const matchingTemplate = findMatchingTemplate(pageContent.metadata.url, templates);
+      if (matchingTemplate) {
+        templateSelect.value = matchingTemplate.id;
+      }
     }
     
     // Update highlights section

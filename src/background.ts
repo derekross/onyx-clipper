@@ -57,7 +57,7 @@ async function handleMessage(message: Message, sender: browser.Runtime.MessageSe
         // This avoids the popup closing and canceling the permission dialog
         const deepLinkData = message.data as { url: string };
         if (deepLinkData?.url) {
-          openDeepLink(deepLinkData.url);
+          await openDeepLink(deepLinkData.url);
           return { success: true };
         }
         return { success: false, error: 'No URL provided' };
@@ -76,23 +76,38 @@ async function handleMessage(message: Message, sender: browser.Runtime.MessageSe
 
 /**
  * Open a deep link URL
- * Following Obsidian's approach - just open the URL directly
+ * Uses chrome.tabs.update to navigate the current tab to the deep link URL
+ * This triggers the OS to open the registered app
  */
-function openDeepLink(url: string): void {
-  // Simply create a new tab with the deep link URL
-  // The OS will intercept this and open the registered app
-  browser.tabs.create({ url, active: false }).then(tab => {
-    // Close the tab after a short delay (the deep link will have been triggered)
-    if (tab.id) {
-      setTimeout(() => {
-        browser.tabs.remove(tab.id!).catch(() => {
-          // Tab may already be closed
-        });
-      }, 100);
+async function openDeepLink(url: string): Promise<void> {
+  try {
+    // Get the active tab
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab?.id) {
+      console.error('No active tab found');
+      return;
     }
-  }).catch(error => {
+    
+    // Store original URL to navigate back
+    const originalUrl = tab.url || 'about:blank';
+    
+    // Navigate to the deep link - this triggers the OS handler
+    await browser.tabs.update(tab.id, { url });
+    
+    // Navigate back after a short delay
+    setTimeout(async () => {
+      try {
+        if (tab.id) {
+          await browser.tabs.update(tab.id, { url: originalUrl });
+        }
+      } catch (e) {
+        // Tab may have been closed
+        console.log('Could not restore tab:', e);
+      }
+    }, 500);
+  } catch (error) {
     console.error('Failed to open deep link:', error);
-  });
+  }
 }
 
 // Handle keyboard commands
