@@ -1,4 +1,5 @@
 import type { PageMetadata, PageContent } from '../types/types';
+import { Defuddle } from 'defuddle';
 
 /**
  * Extract main content and metadata from a web page
@@ -13,8 +14,6 @@ export async function extractPageContent(): Promise<PageContent> {
   let contentHtml = '';
   
   try {
-    // Dynamic import of defuddle (it may not be available in content script)
-    const { Defuddle } = await import('defuddle');
     const result = new Defuddle(document, { url: document.URL }).parse();
     
     content = result.content || '';
