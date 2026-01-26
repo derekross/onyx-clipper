@@ -6,20 +6,19 @@ import { htmlToMarkdown, generateFrontmatter, escapeYaml } from './markdown-conv
  * Compile a template with the given variable context
  * Returns the complete note content with frontmatter
  */
-export async function compileTemplate(
+export function compileTemplate(
   template: Template,
-  context: VariableContext,
-  aiHandler?: (prompt: string, pageContext: string) => Promise<string>
-): Promise<{ filename: string; content: string }> {
+  context: VariableContext
+): { filename: string; content: string } {
   // Compile the filename
   const filename = sanitizeFilename(
-    await interpolateVariables(template.noteNameFormat, context, aiHandler)
+    interpolateVariables(template.noteNameFormat, context)
   );
   
   // Compile frontmatter properties
   const properties: Record<string, string | string[]> = {};
   for (const prop of template.properties) {
-    const value = await interpolateVariables(prop.value, context, aiHandler);
+    const value = interpolateVariables(prop.value, context);
     
     if (prop.type === 'list') {
       // Parse comma-separated list
@@ -33,11 +32,9 @@ export async function compileTemplate(
   const frontmatter = generateFrontmatter(properties);
   
   // Compile note content
-  const noteContent = await interpolateVariables(
+  const noteContent = interpolateVariables(
     template.noteContentFormat,
-    context,
-    aiHandler,
-    template.context
+    context
   );
   
   // Combine frontmatter and content
@@ -48,18 +45,16 @@ export async function compileTemplate(
 
 /**
  * Interpolate variables in a template string
- * Supports: {{variable}}, {{variable:format}}, {{prompt:"..."}}
+ * Supports: {{variable}}, {{variable:format}}
  */
-async function interpolateVariables(
+function interpolateVariables(
   template: string,
-  context: VariableContext,
-  aiHandler?: (prompt: string, pageContext: string) => Promise<string>,
-  templateContext?: string
-): Promise<string> {
+  context: VariableContext
+): string {
   // Match all variable patterns
   const variablePattern = /\{\{([^}]+)\}\}/g;
   
-  // Find all matches first (we need to handle async replacements)
+  // Find all matches first
   const matches: Array<{ full: string; inner: string }> = [];
   let match;
   while ((match = variablePattern.exec(template)) !== null) {
@@ -69,7 +64,7 @@ async function interpolateVariables(
   // Process each match
   let result = template;
   for (const { full, inner } of matches) {
-    const replacement = await resolveVariable(inner, context, aiHandler, templateContext);
+    const replacement = resolveVariable(inner, context);
     result = result.replace(full, replacement);
   }
   
@@ -79,32 +74,11 @@ async function interpolateVariables(
 /**
  * Resolve a single variable
  */
-async function resolveVariable(
+function resolveVariable(
   variable: string,
-  context: VariableContext,
-  aiHandler?: (prompt: string, pageContext: string) => Promise<string>,
-  templateContext?: string
-): Promise<string> {
+  context: VariableContext
+): string {
   const trimmed = variable.trim();
-  
-  // Handle AI prompts: {{prompt:"..."}}
-  if (trimmed.startsWith('prompt:')) {
-    const promptMatch = trimmed.match(/^prompt:\s*["'](.+)["']$/s);
-    if (promptMatch && aiHandler) {
-      const prompt = promptMatch[1];
-      const pageContext = templateContext 
-        ? `${templateContext}\n\nPage content:\n${context.content}`
-        : context.content;
-      
-      try {
-        return await aiHandler(prompt, pageContext);
-      } catch (error) {
-        console.error('AI prompt failed:', error);
-        return `[AI generation failed: ${prompt}]`;
-      }
-    }
-    return '[AI not available]';
-  }
   
   // Handle date formatting: {{date:FORMAT}} or {{published:FORMAT}}
   const dateFormatMatch = trimmed.match(/^(date|time|published):(.+)$/);

@@ -120,18 +120,6 @@ export interface ClipRequest {
   filename?: string;
 }
 
-export interface AiRequest {
-  prompt: string;
-  context: string;
-  callbackId: string;
-}
-
-export interface AiResponse {
-  callbackId: string;
-  result: string;
-  error?: string;
-}
-
 // Template variable context
 export interface VariableContext {
   // Page data

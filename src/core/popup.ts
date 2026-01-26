@@ -2,7 +2,7 @@ import browser from 'webextension-polyfill';
 import type { Template, PageMetadata, MessageResponse } from '../types/types';
 import { getTemplates, getSettings } from '../utils/storage';
 import { compileTemplate, buildVariableContext, sanitizeFilename } from '../utils/template-compiler';
-import { clipToOnyx, createAiHandler } from '../utils/onyx-api';
+import { clipToOnyx } from '../utils/onyx-api';
 import { findMatchingTemplate } from '../background';
 
 // DOM Elements
@@ -166,9 +166,9 @@ async function updateTemplate() {
     includeHighlights.checked ? pageContent.highlightCount : 0
   );
   
-  // Compile template (without AI for preview - AI will run on clip)
+  // Compile template
   try {
-    compiledContent = await compileTemplate(currentTemplate, context);
+    compiledContent = compileTemplate(currentTemplate, context);
     
     // Update filename
     filename.value = compiledContent.filename;
@@ -260,37 +260,17 @@ function setupEventListeners() {
 async function handleClip() {
   if (!pageContent || !currentTemplate || !compiledContent) return;
   
+  const btn = clipBtn as HTMLButtonElement;
+  
   try {
-    clipBtn.disabled = true;
-    clipBtn.innerHTML = '<span class="spinner small"></span> Clipping...';
-    
-    // Check if template has AI prompts
-    const hasAiPrompts = currentTemplate.noteContentFormat.includes('{{prompt:');
-    
-    let finalContent = compiledContent.content;
-    
-    if (hasAiPrompts) {
-      // Recompile with AI handler
-      const context = buildVariableContext(
-        pageContent.metadata,
-        pageContent.content,
-        pageContent.contentHtml,
-        pageContent.selection,
-        pageContent.selectionHtml,
-        includeHighlights.checked ? pageContent.highlights : '',
-        includeHighlights.checked ? pageContent.highlightCount : 0
-      );
-      
-      const aiHandler = createAiHandler(60000);
-      const compiled = await compileTemplate(currentTemplate, context, aiHandler);
-      finalContent = compiled.content;
-    }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner small"></span> Clipping...';
     
     // Send to Onyx
     await clipToOnyx({
       title: pageContent.metadata.title || 'Untitled',
       path: savePath.value || 'Clippings',
-      content: finalContent,
+      content: compiledContent.content,
       filename: compiledContent.filename,
     });
     
@@ -305,8 +285,8 @@ async function handleClip() {
     console.error('Clip error:', error);
     showError(error instanceof Error ? error.message : 'Failed to clip to Onyx');
     
-    clipBtn.disabled = false;
-    clipBtn.innerHTML = `
+    btn.disabled = false;
+    btn.innerHTML = `
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
         <polyline points="17 21 17 13 7 13 7 21"></polyline>

@@ -1,5 +1,5 @@
 import browser from 'webextension-polyfill';
-import type { ClipRequest, AiRequest, AiResponse, MessageResponse } from '../types/types';
+import type { ClipRequest, MessageResponse } from '../types/types';
 
 /**
  * Clip content to Onyx via URL scheme
@@ -36,105 +36,6 @@ export async function clipToOnyx(request: ClipRequest): Promise<void> {
 }
 
 /**
- * Request AI completion from Onyx
- * Onyx will process the prompt using the user's OpenCode configuration
- */
-export async function requestAiCompletion(
-  prompt: string,
-  context: string,
-  timeoutMs: number = 60000
-): Promise<string> {
-  const callbackId = generateCallbackId();
-  
-  // Prepare the request payload
-  const payload: AiRequest = {
-    prompt,
-    context,
-    callbackId,
-  };
-  
-  // Copy the request to clipboard
-  await navigator.clipboard.writeText(JSON.stringify(payload));
-  
-  // Build URL
-  const params = new URLSearchParams({
-    callback_id: callbackId,
-    clipboard: '1',
-  });
-  
-  // Open Onyx to process the AI request via background script
-  const url = `onyx://ai?${params.toString()}`;
-  
-  // Send message to background script to open the deep link
-  // This works correctly from extension popup context
-  const response = await browser.runtime.sendMessage({
-    action: 'openDeepLink',
-    data: { url },
-  }) as MessageResponse;
-  
-  if (!response.success) {
-    throw new Error(response.error || 'Failed to open Onyx for AI processing');
-  }
-  
-  // Poll clipboard for response
-  const result = await pollForAiResponse(callbackId, timeoutMs);
-  
-  return result;
-}
-
-/**
- * Poll the clipboard for an AI response
- */
-async function pollForAiResponse(
-  callbackId: string,
-  timeoutMs: number
-): Promise<string> {
-  const startTime = Date.now();
-  const pollInterval = 500; // Check every 500ms
-  
-  while (Date.now() - startTime < timeoutMs) {
-    try {
-      const clipboardText = await navigator.clipboard.readText();
-      
-      // Try to parse as JSON response
-      try {
-        const response = JSON.parse(clipboardText) as AiResponse;
-        
-        if (response.callbackId === callbackId) {
-          if (response.error) {
-            throw new Error(response.error);
-          }
-          return response.result;
-        }
-      } catch {
-        // Not a valid JSON response, continue polling
-      }
-    } catch {
-      // Clipboard read failed, continue polling
-    }
-    
-    // Wait before next poll
-    await sleep(pollInterval);
-  }
-  
-  throw new Error('AI request timed out');
-}
-
-/**
- * Generate a unique callback ID
- */
-function generateCallbackId(): string {
-  return `onyx-ai-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-}
-
-/**
- * Sleep for a given number of milliseconds
- */
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
  * Check if Onyx is likely installed by testing the URL scheme
  * Note: This is a heuristic and may not be 100% accurate
  */
@@ -156,15 +57,4 @@ export async function checkOnyxInstalled(): Promise<boolean> {
  */
 export function openOnyx(): void {
   window.open('onyx://', '_self');
-}
-
-/**
- * Create a handler function for AI prompts that can be passed to template compiler
- */
-export function createAiHandler(
-  timeoutMs: number = 60000
-): (prompt: string, context: string) => Promise<string> {
-  return async (prompt: string, context: string): Promise<string> => {
-    return requestAiCompletion(prompt, context, timeoutMs);
-  };
 }
