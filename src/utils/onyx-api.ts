@@ -62,20 +62,22 @@ export async function requestAiCompletion(
     clipboard: '1',
   });
   
-  // Open Onyx to process the AI request
+  // Open Onyx to process the AI request via background script
   const url = `onyx://ai?${params.toString()}`;
   
-  // We need to open this in a way that doesn't navigate away from the page
-  // Use a hidden iframe or window.open with specific parameters
-  const popup = window.open(url, '_blank', 'width=1,height=1');
+  // Send message to background script to open the deep link
+  // This works correctly from extension popup context
+  const response = await browser.runtime.sendMessage({
+    action: 'openDeepLink',
+    data: { url },
+  }) as MessageResponse;
+  
+  if (!response.success) {
+    throw new Error(response.error || 'Failed to open Onyx for AI processing');
+  }
   
   // Poll clipboard for response
   const result = await pollForAiResponse(callbackId, timeoutMs);
-  
-  // Close the popup if it's still open
-  if (popup && !popup.closed) {
-    popup.close();
-  }
   
   return result;
 }
