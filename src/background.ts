@@ -1,6 +1,7 @@
 import browser from 'webextension-polyfill';
 import { initializeStorage, getTemplates, getSettings } from './utils/storage';
-import type { Message, MessageResponse, Template } from './types/types';
+import type { Message, MessageResponse } from './types/types';
+import { findMatchingTemplate } from './utils/template-matcher';
 
 // Initialize storage on extension install/update
 browser.runtime.onInstalled.addListener(async () => {
@@ -239,46 +240,5 @@ async function quickClipSelection(tabId: number): Promise<void> {
   }
 }
 
-/**
- * Find the best matching template for a URL
- */
-export function findMatchingTemplate(url: string, templates: Template[]): Template | null {
-  for (const template of templates) {
-    if (!template.triggers || template.triggers.length === 0) continue;
-
-    for (const trigger of template.triggers) {
-      switch (trigger.type) {
-        case 'url':
-          if (url.startsWith(trigger.pattern)) {
-            return template;
-          }
-          break;
-
-        case 'regex':
-          try {
-            // Remove surrounding slashes and flags
-            const match = trigger.pattern.match(/^\/(.+)\/([gimsuvy]*)$/);
-            if (match) {
-              const regex = new RegExp(match[1], match[2]);
-              if (regex.test(url)) {
-                return template;
-              }
-            }
-          } catch {
-            // Invalid regex, skip
-          }
-          break;
-
-        case 'schema':
-          // Schema matching would require access to page schema data
-          // This is handled in the content script
-          break;
-      }
-    }
-  }
-
-  return null;
-}
-
 // Export for testing
-export { setupContextMenu, quickClip, quickClipSelection };
+export { findMatchingTemplate, setupContextMenu, quickClip, quickClipSelection };

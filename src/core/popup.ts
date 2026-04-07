@@ -3,7 +3,7 @@ import type { Template, PageMetadata, MessageResponse } from '../types/types';
 import { getTemplates, getSettings } from '../utils/storage';
 import { compileTemplate, buildVariableContext, sanitizeFilename } from '../utils/template-compiler';
 import { clipToOnyx } from '../utils/onyx-api';
-import { findMatchingTemplate } from '../background';
+import { findMatchingTemplate } from '../utils/template-matcher';
 
 // DOM Elements
 const loading = document.getElementById('loading')!;
